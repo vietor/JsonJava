@@ -167,7 +167,7 @@ class JsonSerializer {
 			}
 
 			if (runIndex != -1) {
-				output.append(s, runIndex, index - runIndex);
+				output.append(s, runIndex, index);
 				runIndex = -1;
 			}
 
@@ -194,7 +194,7 @@ class JsonSerializer {
 		}
 
 		if (runIndex != -1) {
-			output.append(s, runIndex, s.length() - runIndex);
+			output.append(s, runIndex, s.length());
 		}
 
 		output.append('\"');

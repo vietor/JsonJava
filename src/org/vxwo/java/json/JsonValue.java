@@ -127,28 +127,69 @@ public class JsonValue {
 		return type == JsonType.String;
 	}
 
-	public boolean asBoolean() {
-		return isString() ? Boolean.parseBoolean((String) store)
-				: ((Boolean) store).booleanValue();
-	}
+	public boolean asBoolean() throws JsonException
+    {
+		boolean value = false;
+        if (isBoolean())
+            value = ((Boolean)store).booleanValue();
+        else if (isString())
+            value = Boolean.parseBoolean((String)store);
+        else
+            throw new JsonException("JsonValue cannot convert to a bool");
+        return value;
+    }
 
-	public int asInt() {
-		return isString() ? Integer.parseInt((String) store)
-				: ((Integer) store).intValue();
-	}
+    public int asInt() throws JsonException
+    {
+        int value = 0;
+        if (isInt())
+            value = ((Integer)store).intValue();
+        else if (isString())
+            value = Integer.parseInt((String)store);
+        else if (isLong())
+            value = ((Long)store).intValue();
+        else if (isDouble())
+            value = ((Double)store).intValue();
+        else
+            throw new JsonException("JsonValue cannot convert to a int");
+        return value;
+    }
 
-	public long asLong() {
-		return isString() ? Long.parseLong((String) store) : ((Long) store)
-				.longValue();
-	}
+    public long asLong() throws JsonException
+    {
+        long value = 0;
+        if (isLong())
+            value = ((Long)store).longValue();
+        else if (isString())
+            value = Long.parseLong((String)store);
+        else if (isInt())
+            value = ((Integer)store).longValue();
+        else if (isDouble())
+            value = ((Double)store).longValue();
+        else
+            throw new JsonException("JsonValue cannot convert to a long");
+        return value;
+    }
 
-	public double asDouble() {
-		return isString() ? Double.parseDouble((String) store)
-				: ((Double) store).doubleValue();
-	}
-
-	public String asString() {
-		return isString() ? (String) store : store.toString();
-	}
+    public double asDouble() throws JsonException
+    {
+        double value = 0;
+        if (isDouble())
+            value = ((Double)store).doubleValue();
+        else if (isString())
+            value = Double.parseDouble((String)store);
+        else if (isInt())
+            value = ((Integer)store).doubleValue();
+        else if (isLong())
+            value = ((Long)store).doubleValue();
+        else
+            throw new JsonException("JsonValue cannot convert to a double");
+        return value;
+    }
+    
+    public String asString()
+    {
+    	return isString() ? (String) store : store.toString();
+    }
 
 }

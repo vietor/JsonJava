@@ -286,6 +286,23 @@ class JsonParser {
 	private Token nextTokenCore() throws JsonException {
 		char c;
 
+		// Skip head whitespace
+		if (index == 0) {
+			do {
+				c = json[index];
+
+				if (c == '{')
+					break;
+				if (c < (char)0x80 && c != ' ' && c != '\t' && c != '\n' && c != '\r')
+					break;
+
+			} while (++index < json.length);
+			
+			if (index == json.length) {
+				throw new JsonException("Reached end of String unexpectedly");
+			}
+		}
+
 		// Skip past whitespace
 		do {
 			c = json[index];

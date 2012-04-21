@@ -300,9 +300,10 @@ class JsonParser {
 			} while (++index < json.length);
 
 			if (index == json.length) {
-				throw new JsonException("Reached end of string unexpectedly");
+				throw new JsonException("Reached end of String unexpectedly");
 			}
 		}
+
 		// Skip past whitespace
 		do {
 			c = json[index];

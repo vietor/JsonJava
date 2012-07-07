@@ -75,6 +75,7 @@ class JsonParser {
 		}
 	}
 
+	@SuppressWarnings("incomplete-switch")
 	private JsonValue parseValue() throws JsonException {
 		switch (LookAhead()) {
 		case Number:

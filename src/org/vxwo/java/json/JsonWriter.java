@@ -5,4 +5,10 @@ public class JsonWriter {
     {
         return new JsonSerializer(true, false).toJSON(obj);
     }
+	
+	@SuppressWarnings("rawtypes")
+	public static Object WriteObject(Class type, JsonValue obj) throws JsonException
+    {
+        return new JsonObjSerializer().ConvertToObject(type, obj);
+    }
 }

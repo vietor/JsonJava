@@ -97,7 +97,7 @@ public class JsonValue {
 		return (ArrayList<JsonValue>) store;
 	}
 
-	public int count() throws Exception {
+	public int count() throws JsonException {
 		if (type != JsonType.Array)
 			return 0;
 		return ensureArray().size();

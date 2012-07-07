@@ -5,4 +5,8 @@ public class JsonReader {
     {
         return new JsonParser(json).decode();
     }
+	public static JsonValue ReadObject (Object obj) throws JsonException
+	{
+		return new JsonObjParser (obj).Decode ();
+	}
 }

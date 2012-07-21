@@ -33,10 +33,12 @@ class JsonObjParser {
 			}
 			return result;
 		}
-		if (type.getSimpleName().equalsIgnoreCase("Char"))
-			return new JsonValue(JsonType.Int, (Integer) obj);
+		if (type.getSimpleName().equalsIgnoreCase("Character"))
+			return new JsonValue(JsonType.Int,
+					Integer.valueOf((int) ((Character) obj).charValue()));
 		if (type.getSimpleName().equalsIgnoreCase("Byte"))
-			return new JsonValue(JsonType.Int, (Integer) obj);
+			return new JsonValue(JsonType.Int, Integer.valueOf(((Byte) obj)
+					.intValue()));
 		if (type.getSimpleName().equalsIgnoreCase("Boolean"))
 			return new JsonValue(JsonType.Boolean, obj);
 		if (type.getSimpleName().equalsIgnoreCase("Integer"))
@@ -44,7 +46,8 @@ class JsonObjParser {
 		if (type.getSimpleName().equalsIgnoreCase("Long"))
 			return new JsonValue(JsonType.Long, obj);
 		if (type.getSimpleName().equalsIgnoreCase("Float"))
-			return new JsonValue(JsonType.Double, ((Float) obj).doubleValue());
+			return new JsonValue(JsonType.Double, Double.valueOf(((Float) obj)
+					.doubleValue()));
 		if (type.getSimpleName().equalsIgnoreCase("Double"))
 			return new JsonValue(JsonType.Double, obj);
 		if (type.getSimpleName().equals("String"))

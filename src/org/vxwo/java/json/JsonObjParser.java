@@ -1,5 +1,6 @@
 package org.vxwo.java.json;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.text.SimpleDateFormat;
 
@@ -25,8 +26,8 @@ class JsonObjParser {
 
 		if (type.isArray()) {
 			JsonValue child, result = new JsonValue(JsonType.Array, null);
-			for (Object sub : (Object[]) obj) {
-				child = ParseValue(sub);
+			for (int index = 0; index < Array.getLength(obj); ++index) {
+				child = ParseValue(Array.get(obj, index));
 				if (child != null)
 					result.append(child);
 			}

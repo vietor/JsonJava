@@ -1,6 +1,6 @@
 package org.vxwo.java.json;
 
-class JsonParser {
+public class JsonParser {
 	enum Token {
 		None, Curly_Open, Curly_Close, Squared_Open, Squared_Close, Colon, Comma, String, Number, True, False, Null
 	}
@@ -13,12 +13,47 @@ class JsonParser {
 		this.json = json.toCharArray();
 	}
 
-	JsonValue decode() throws JsonException {
-		return parseValue();
+	JsonObject decode() throws JsonException {
+		Object obj = parseValue();
+		if (!(obj instanceof JsonObject))
+			new JsonException("Parser: root object is not a json object");
+		return (JsonObject) obj;
 	}
 
-	private JsonValue parseObject() throws JsonException {
-		JsonValue obj = new JsonValue();
+	private Object parseValue() throws JsonException {
+		switch (LookAhead()) {
+		case Number:
+			return parseNumber();
+
+		case String:
+			return parseString();
+
+		case Curly_Open:
+			return parseObject();
+
+		case Squared_Open:
+			return parseArray();
+
+		case True:
+			consumeToken();
+			return true;
+
+		case False:
+			consumeToken();
+			return false;
+
+		case Null:
+			consumeToken();
+			return null;
+
+		default:
+			throw new JsonException("Parser: unrecognized token at index"
+					+ index);
+		}
+	}
+
+	private JsonObject parseObject() throws JsonException {
+		JsonObject obj = new JsonObject();
 
 		consumeToken(); // {
 
@@ -34,25 +69,20 @@ class JsonParser {
 				return obj;
 
 			default: {
-
-				// name
+				// name:value
 				String name = parseString();
-
-				// :
-				if (nextToken() != Token.Colon) {
-					throw new JsonException("Expected colon at index " + index);
-				}
-
-				// value
-				obj.setMember(name, parseValue());
+				if (nextToken() != Token.Colon)
+					throw new JsonException("Parser: expected colon at index "
+							+ index);
+				obj.put(name, parseValue());
 			}
 				break;
 			}
 		}
 	}
 
-	private JsonValue parseArray() throws JsonException {
-		JsonValue array = new JsonValue(JsonType.Array, null);
+	private JsonArray parseArray() throws JsonException {
+		JsonArray array = new JsonArray();
 
 		consumeToken(); // [
 
@@ -67,43 +97,11 @@ class JsonParser {
 				consumeToken();
 				return array;
 
-			default: {
-				array.append(parseValue());
-			}
+			default:
+				array.add(parseValue());
 				break;
 			}
 		}
-	}
-
-	@SuppressWarnings("incomplete-switch")
-	private JsonValue parseValue() throws JsonException {
-		switch (LookAhead()) {
-		case Number:
-			return parseNumber();
-
-		case String:
-			return new JsonValue(parseString());
-
-		case Curly_Open:
-			return parseObject();
-
-		case Squared_Open:
-			return parseArray();
-
-		case True:
-			consumeToken();
-			return new JsonValue(true);
-
-		case False:
-			consumeToken();
-			return new JsonValue(false);
-
-		case Null:
-			consumeToken();
-			return new JsonValue(JsonType.Null, null);
-		}
-
-		throw new JsonException("Unrecognized token at index" + index);
 	}
 
 	private String parseString() throws JsonException {
@@ -184,7 +182,6 @@ class JsonParser {
 						json[index + 2], json[index + 3]);
 				s.append((char) codePoint);
 
-				// skip 4 chars
 				index += 4;
 			}
 				break;
@@ -213,11 +210,9 @@ class JsonParser {
 		return p1 + p2 + p3 + p4;
 	}
 
-	private JsonValue parseNumber() throws JsonException {
+	private Object parseNumber() throws JsonException {
 		consumeToken();
 
-		// Need to start back one place because the first digit is also a token
-		// and would have been consumed
 		int startIndex = index - 1;
 
 		do {
@@ -227,7 +222,7 @@ class JsonParser {
 					|| c == 'e' || c == 'E') {
 				if (++index == json.length)
 					throw new JsonException(
-							"Unexpected end of String whilst parsing number");
+							"Parser: unexpected end of String whilst parsing number");
 				continue;
 			}
 
@@ -236,32 +231,15 @@ class JsonParser {
 
 		String number = new String(json, startIndex, index - startIndex);
 
-		JsonValue result = null;
 		if (number.indexOf('.') != -1 || number.indexOf('e') != -1
-				|| number.indexOf('E') != -1) {
-			try {
-				double value_double = Double.parseDouble(number);
-				result = new JsonValue(value_double);
-			} catch (NumberFormatException e) {
-			}
+				|| number.indexOf('E') != -1)
+			return Double.parseDouble(number);
+		
+		try {
+			return Integer.parseInt(number);
+		} catch (NumberFormatException e) {
+			return Long.parseLong(number);
 		}
-		if (result == null) {
-			try {
-				int value_int = Integer.parseInt(number);
-				result = new JsonValue(value_int);
-			} catch (NumberFormatException e) {
-			}
-		}
-		if (result == null) {
-			try {
-				long value_long = Long.parseLong(number);
-				result = new JsonValue(value_long);
-			} catch (NumberFormatException e) {
-			}
-		}
-		if (result == null)
-			result = new JsonValue(0);
-		return result;
 	}
 
 	private Token LookAhead() throws JsonException {
@@ -301,7 +279,8 @@ class JsonParser {
 			} while (++index < json.length);
 
 			if (index == json.length) {
-				throw new JsonException("Reached end of String unexpectedly");
+				throw new JsonException(
+						"Parser: reached end of String unexpectedly");
 			}
 		}
 
@@ -317,7 +296,8 @@ class JsonParser {
 		} while (++index < json.length);
 
 		if (index == json.length) {
-			throw new JsonException("Reached end of String unexpectedly");
+			throw new JsonException(
+					"Parser: reached end of String unexpectedly");
 		}
 
 		c = json[index];
@@ -388,6 +368,7 @@ class JsonParser {
 
 		}
 
-		throw new JsonException("Could not find token at index " + --index);
+		throw new JsonException("Parser: could not find token at index "
+				+ --index);
 	}
 }

@@ -1,176 +1,179 @@
 package org.vxwo.java.json;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map.Entry;
+import java.lang.reflect.Array;
+import java.lang.reflect.Field;
+import java.util.Date;
 
-class JsonSerializer {
-	
-	private StringBuilder output = new StringBuilder();
+public class JsonSerializer {
+	private final static int MAX_DEPTH = 10;
+
 	private boolean serializeNulls = true;
 	private boolean indentOutput = false;
-	private int MAX_DEPTH = 10;
 	private int currentDepth = 0;
+	private StringBuilder output = new StringBuilder();
 
 	JsonSerializer(boolean serializeNulls, boolean indentOutput) {
 		this.indentOutput = indentOutput;
 		this.serializeNulls = serializeNulls;
 	}
 
-	String toJSON(JsonValue obj) throws JsonException {
-		WriteValue(obj);
+	String serialize(Object obj) throws JsonException {
+		writeValue(obj);
 		return output.toString();
 	}
 
-	private void WriteValue(JsonValue obj) throws JsonException {
-		switch (obj.type) {
-		case None:
-		case Null:
+	@SuppressWarnings("rawtypes")
+	private void writeValue(Object obj) throws JsonException {
+		if (obj == null) {
 			output.append("null");
-			break;
-		case Boolean:
-			output.append(((Boolean) obj.store) ? "true" : "false");
-			break;
-		case Int:
-			output.append((Integer) obj.store);
-			break;
-		case Long:
-			output.append((Long) obj.store);
-			break;
-		case Double:
-			output.append((Double) obj.store);
-			break;
-		case String:
-			WriteString((String) obj.store);
-			break;
-		case Object:
-			WriteObject(obj);
-			break;
-		case Array:
-			WriteArray(obj);
-			break;
+			return;
+		}
+
+		Class type = obj.getClass();
+		if (type.isArray())
+			writeArray(obj);
+		else if (obj instanceof Character)
+			output.append((int) ((Character) obj).charValue());
+		else if (obj instanceof Byte || obj instanceof Integer
+				|| obj instanceof Long || obj instanceof Float
+				|| obj instanceof Double || obj instanceof Boolean)
+			output.append(obj);
+		else if (obj instanceof String)
+			writeString((String) obj);
+		else if (obj instanceof Date)
+			writeString(Convert.dateFormat.format((Date) obj));
+		else if (obj instanceof JsonObject)
+			writeObject((JsonObject) obj);
+		else if (obj instanceof JsonArray)
+			writeArray((JsonArray) obj);
+		else {
+			String typeName = type.getName();
+			if (!typeName.startsWith("java.") && !typeName.startsWith("javax."))
+				writeObject(type, obj);
+			else
+				throw new JsonException("Serializer: unsupport type: "
+						+ typeName);
 		}
 	}
 
-	@SuppressWarnings("unchecked")
-	private void WriteObject(JsonValue obj) throws JsonException {
-		Indent();
-		currentDepth++;
-		if (currentDepth > MAX_DEPTH)
-			throw new JsonException("Serializer encountered maximum depth of "
-					+ MAX_DEPTH);
-		output.append('{');
-
+	@SuppressWarnings("rawtypes")
+	private void writeObject(Class type, Object obj) throws JsonException {
+		enterDepth('{');
 		boolean append = false;
-		Entry<String, JsonValue> kv;
-		Iterator<Entry<String, JsonValue>> itr = ((HashMap<String, JsonValue>) obj.store)
-				.entrySet().iterator();
-		while (itr.hasNext()) {
-			kv = itr.next();
+		for (Field info : type.getDeclaredFields()) {
+			String generic = info.toGenericString();
+			if (generic.indexOf(" static ") != -1
+					|| generic.indexOf(" final ") != -1)
+				continue;
+			String name = info.getName();
+			try {
+				Object child = info.get(obj);
+				if (child != null || serializeNulls) {
+					if (append)
+						output.append(',');
+					writePair(name, child);
+					append = true;
+				}
+			} catch (IllegalArgumentException e) {
+			} catch (IllegalAccessException e) {
+			}
+		}
+		leaveDepth('}');
+	}
 
-			if (append)
-				output.append(',');
-
-			if (kv.getValue().type == JsonType.None
-					|| (kv.getValue().type == JsonType.Null && serializeNulls == false))
-				append = false;
-			else {
-				WritePair(kv.getKey(), kv.getValue());
+	private void writeObject(JsonObject obj) throws JsonException {
+		enterDepth('{');
+		boolean append = false;
+		for (String name : obj.names()) {
+			Object child = obj.get(name);
+			if (child != null || serializeNulls) {
+				if (append)
+					output.append(',');
+				writePair(name, child);
 				append = true;
 			}
 		}
-
-		currentDepth--;
-		Indent();
-		output.append('}');
-		currentDepth--;
+		leaveDepth('}');
 	}
 
-	@SuppressWarnings("unchecked")
-	private void WriteArray(JsonValue obj) throws JsonException {
-		Indent();
-		currentDepth++;
-		if (currentDepth > MAX_DEPTH)
-			throw new JsonException("Serializer encountered maximum depth of "
-					+ MAX_DEPTH);
-		output.append('[');
-
+	private void writeArray(Object obj) throws JsonException {
+		enterDepth('[');
 		boolean append = false;
-		JsonValue v;
-		ArrayList<JsonValue> list = (ArrayList<JsonValue>) obj.store;
-		for (int i = 0; i < list.size(); ++i) {
-			v = list.get(i);
-			if (append)
-				output.append(',');
-
-			if (v.type == JsonType.None
-					|| (v.type == JsonType.Null && serializeNulls == false))
-				append = false;
-			else {
-				WriteValue(v);
+		int i, length = Array.getLength(obj);
+		for (i = 0; i < length; ++i) {
+			Object child = Array.get(obj, i);
+			if (child != null || serializeNulls) {
+				if (append)
+					output.append(',');
+				writeValue(child);
 				append = true;
 			}
 		}
-
-		currentDepth--;
-		Indent();
-		output.append(']');
-		currentDepth--;
+		leaveDepth(']');
 	}
 
-	private void Indent() {
-		Indent(false);
+	private void writeArray(JsonArray obj) throws JsonException {
+		enterDepth('[');
+		boolean append = false;
+		int i, length = obj.length();
+		for (i = 0; i < length; ++i) {
+			Object child = obj.get(i);
+			if (child != null || serializeNulls) {
+				if (append)
+					output.append(',');
+				writeValue(child);
+				append = true;
+			}
+		}
+		leaveDepth(']');
 	}
 
-	private void Indent(boolean dec) {
+	private void indent() {
 		if (indentOutput) {
 			output.append("\r\n");
-			for (int i = 0; i < currentDepth - (dec ? 1 : 0); i++)
+			for (int i = 0; i < currentDepth; i++)
 				output.append("\t");
 		}
 	}
 
-	private void WritePair(String name, JsonValue value) throws JsonException {
-		if ((value.type == JsonType.None || value.type == JsonType.Null)
-				&& serializeNulls == false)
-			return;
-
-		Indent();
-		WriteStringFast(name);
-
-		output.append(':');
-
-		WriteValue(value);
+	private void enterDepth(char seq) throws JsonException {
+		indent();
+		currentDepth++;
+		if (currentDepth > MAX_DEPTH)
+			throw new JsonException("Serializer: encountered maximum depth of "
+					+ MAX_DEPTH);
+		output.append(seq);
 	}
 
-	private void WriteStringFast(String s) {
-		output.append('\"');
-		output.append(s);
-		output.append('\"');
+	private void leaveDepth(char seq) {
+		currentDepth--;
+		indent();
+		output.append(seq);
 	}
 
-	private void WriteString(String s) {
+	private void writePair(String name, Object value) throws JsonException {
+		indent();
 		output.append('\"');
+		output.append(name);
+		output.append("\":");
+		writeValue(value);
+	}
 
+	private void writeString(String s) {
+		output.append('\"');
 		int runIndex = -1;
-
 		for (int index = 0; index < s.length(); ++index) {
 			char c = s.charAt(index);
-
 			if (c >= ' ' && c < 128 && c != '\"' && c != '\\') {
 				if (runIndex == -1) {
 					runIndex = index;
 				}
-
 				continue;
 			}
-
 			if (runIndex != -1) {
 				output.append(s, runIndex, index);
 				runIndex = -1;
 			}
-
 			switch (c) {
 			case '\t':
 				output.append("\\t");
@@ -192,11 +195,8 @@ class JsonSerializer {
 				break;
 			}
 		}
-
-		if (runIndex != -1) {
+		if (runIndex != -1)
 			output.append(s, runIndex, s.length());
-		}
-
 		output.append('\"');
 	}
 }
